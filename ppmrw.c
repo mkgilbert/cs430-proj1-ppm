@@ -22,7 +22,6 @@ int get_infile_size(FILE *fp) {
 
 void read_comments(FILE *fh, char **cmts) {
     // reads comments in a file into a char array
-    int pos = ftell(fh);    // get current position of fh
     char *line = NULL;      // temporary line reader
     size_t len = 0;            // temp line length
     size_t read;               // number of bytes read
@@ -46,7 +45,7 @@ void read_comments(FILE *fh, char **cmts) {
     }
 }
 
-header* get_header(FILE *fh) {
+void read_header(FILE *fh, header *hdr) {
     header* hdr = malloc(sizeof(header));
 
     int i;      // iterator variable

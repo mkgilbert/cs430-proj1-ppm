@@ -17,5 +17,6 @@ typedef struct header_t {
 } header;
 
 /* functions */
-header* get_header(FILE *fh);
+void read_header(FILE *fh, header *hdr);
+void read_comments(FILE *fh, char **cmts);
 
