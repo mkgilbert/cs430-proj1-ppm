@@ -33,7 +33,8 @@ char **read_comments(FILE *fh) {
         fseek(fh, -1, SEEK_CUR); // move ahead 1 byte
         while ((read = getline(&line, &len, fh)) != -1) {
             if (line[0] != '#') {
-                fseek(fh, -1, SEEK_CUR);
+                // we've now read 1 too many lines. Back up
+                fseek(fh, read*(-1), SEEK_CUR);
                 break;  // we've reached the end of the comments
             }
             // allocate space for each line in cmts
@@ -100,6 +101,9 @@ void read_header(FILE *fh, header *hdr) {
         while (cmts[ptr] != NULL)
             printf("%s\n", cmts[ptr++]);
     }
+
+    // read width and height
+    fscanf(fh, "%d %d", &(hdr->width), &(hdr->height));
 }
 
 int main(int argc, char *argv[]){
@@ -124,7 +128,9 @@ int main(int argc, char *argv[]){
     int8_t ptr = 0;
     while (hdr->comments[ptr] != NULL)
         printf("%s", hdr->comments[ptr++]);
-    
+    printf("Width: %d\n", hdr->width);
+    printf("Height: %d\n", hdr->height);
+
     //fseek(in_ptr, 3, SEEK_SET);
     //char** cmts = read_comments(in_ptr);
     //printf("%s", cmts[0]); 
