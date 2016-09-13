@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "include/ppmrw.h"
 
 int get_infile_size(FILE *fp) {
@@ -20,12 +21,13 @@ int get_infile_size(FILE *fp) {
     return ftell(fp);
 }
 
-void read_comments(FILE *fh, char **cmts) {
+char **read_comments(FILE *fh) {
     // reads comments in a file into a char array
     char *line = NULL;      // temporary line reader
     size_t len = 0;            // temp line length
     size_t read;               // number of bytes read
     int ptr = 0;            // pointer to index of cmts variable
+    char **cmts = malloc(sizeof(char*) * MAX_SIZE);
 
     if (fgetc(fh) == '#') {
         fseek(fh, -1, SEEK_CUR); // move ahead 1 byte
@@ -34,21 +36,22 @@ void read_comments(FILE *fh, char **cmts) {
                 fseek(fh, -1, SEEK_CUR);
                 break;  // we've reached the end of the comments
             }
-            cmts[ptr++] = line;
-            printf("%s", line);
+            // allocate space for each line in cmts
+            cmts[ptr] = malloc(sizeof(char) * strlen(line));
+            strcpy(cmts[ptr], line);
+            ptr++;
         }
+        // null terminate after last line
         cmts[ptr] = NULL;
         free(line);
     }
     else {
         perror("Error: The starting position is not a comment");
     }
+    return cmts;
 }
 
 void read_header(FILE *fh, header *hdr) {
-    header* hdr = malloc(sizeof(header));
-
-    int i;      // iterator variable
     char c;     // temporary char read in from file
     boolean is_p3; // determines file type being P3 or P6
 
@@ -75,24 +78,28 @@ void read_header(FILE *fh, header *hdr) {
         hdr->file_type = 6;
         printf("file is P6\n");
     }
-    if (fgetc(fh) != '\n')
+    if (fgetc(fh) != '\n') {
         perror("Error: must be a newline after file type");
-    
-    printf("\n");
-    fseek(fh, -1, SEEK_CUR);
-
-    // basic test to get header info
-    hdr->file_type = (int)fgetc(fh);
+    }
     
     // read in comments
     c = fgetc(fh);
     if (c == '#') {
         printf("there's a comment\n");
+        // go back one space to get to beginning of comment
         fseek(fh, -1, SEEK_CUR);
-        char *cmts[1024];
-        read_comments(fh, cmts);
+
+        char** cmts = read_comments(fh);
+        if (cmts == NULL) {
+            perror("Error: found a '#' but got no comments...");
+        }
+        // allocate space in hdr struct for the comments and copy them in
+        hdr->comments = cmts; // don't allocate maybe? just point???
+        // testing output
+        int8_t ptr = 0;
+        while (cmts[ptr] != NULL)
+            printf("%s\n", cmts[ptr++]);
     }
-    return hdr;
 }
 
 int main(int argc, char *argv[]){
@@ -110,6 +117,18 @@ int main(int argc, char *argv[]){
     //printf("infile size is: %d\n", infile_size);
 
     // test get_header function
-    header* hdr = get_header(in_ptr);
+    header *hdr = (header *)malloc(sizeof(header));
+    read_header(in_ptr, hdr);
+    printf("File type: P%d\n", hdr->file_type);
+    printf("Comments: \n");
+    int8_t ptr = 0;
+    while (hdr->comments[ptr] != NULL)
+        printf("%s", hdr->comments[ptr++]);
+    
+    //fseek(in_ptr, 3, SEEK_SET);
+    //char** cmts = read_comments(in_ptr);
+    //printf("%s", cmts[0]); 
+    //printf("%s", cmts[1]); 
+    fclose(in_ptr);
     return 0;
 }
