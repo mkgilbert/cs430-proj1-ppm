@@ -1,9 +1,14 @@
 /* ppmrw header file */
+#ifndef PPMRW_H
+#define PPMRW_H
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define FALSE 0
 #define TRUE 1
+#define MAX_SIZE 1024
 
 /* variables and types */
 typedef int8_t boolean;
@@ -18,5 +23,6 @@ typedef struct header_t {
 
 /* functions */
 void read_header(FILE *fh, header *hdr);
-void read_comments(FILE *fh, char **cmts);
+char **read_comments(FILE *fh);
 
+#endif
