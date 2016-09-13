@@ -73,11 +73,9 @@ void read_header(FILE *fh, header *hdr) {
     
     if (is_p3) {
         hdr->file_type = 3;
-        printf("file is P3\n");
     }
     else {
         hdr->file_type = 6;
-        printf("file is P6\n");
     }
     if (fgetc(fh) != '\n') {
         perror("Error: must be a newline after file type");
@@ -86,7 +84,6 @@ void read_header(FILE *fh, header *hdr) {
     // read in comments
     c = fgetc(fh);
     if (c == '#') {
-        printf("there's a comment\n");
         // go back one space to get to beginning of comment
         fseek(fh, -1, SEEK_CUR);
 
@@ -97,13 +94,19 @@ void read_header(FILE *fh, header *hdr) {
         // allocate space in hdr struct for the comments and copy them in
         hdr->comments = cmts; // don't allocate maybe? just point???
         // testing output
-        int8_t ptr = 0;
-        while (cmts[ptr] != NULL)
-            printf("%s\n", cmts[ptr++]);
+        //int8_t ptr = 0;
+        //while (cmts[ptr] != NULL)
+        //    printf("%s\n", cmts[ptr++]);
     }
 
     // read width and height
     fscanf(fh, "%d %d", &(hdr->width), &(hdr->height));
+    // TODO: Error checking
+    
+    fscanf(fh, "%d", &(hdr->max_color_val));
+    // TODO: Type Error checking
+    if (hdr->max_color_val > 255)
+        perror("Error: max color value must be <= 255");
 }
 
 int main(int argc, char *argv[]){
@@ -130,11 +133,10 @@ int main(int argc, char *argv[]){
         printf("%s", hdr->comments[ptr++]);
     printf("Width: %d\n", hdr->width);
     printf("Height: %d\n", hdr->height);
-
-    //fseek(in_ptr, 3, SEEK_SET);
-    //char** cmts = read_comments(in_ptr);
-    //printf("%s", cmts[0]); 
-    //printf("%s", cmts[1]); 
+    printf("Max Color Value: %d\n", hdr->max_color_val);
+    
+    free(hdr->comments);
+    free(hdr);
     fclose(in_ptr);
     return 0;
 }
