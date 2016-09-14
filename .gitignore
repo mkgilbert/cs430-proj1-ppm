@@ -1,3 +1,4 @@
 ppmrw
-./*.ppm
+*.ppm
 .*.swp
+

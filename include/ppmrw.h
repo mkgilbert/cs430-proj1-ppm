@@ -13,6 +13,7 @@
 /* variables and types */
 typedef int8_t boolean;
 
+// file header info
 typedef struct header_t {
     int file_type;
     char **comments;
@@ -21,8 +22,19 @@ typedef struct header_t {
     int max_color_val;
 } header;
 
+// one pixel
+typedef struct RGBPixel_t {
+    unsigned char r, g, b;
+} RGBPixel;
+
+// image info
+typedef struct image_t {
+    RGBPixel *pixmap;
+    int width, height;
+} image;
+
 /* functions */
-void read_header(FILE *fh, header *hdr);
+int read_header(FILE *fh, header *hdr);
 char **read_comments(FILE *fh);
 
 #endif
