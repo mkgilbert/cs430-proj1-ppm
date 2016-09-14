@@ -2,7 +2,7 @@ PROG="ppmrw"
 INPUT="ppmrw.c"
 
 all:
-	gcc $(INPUT) -o $(PROG)
+	gcc -O0 $(INPUT) -o $(PROG)
 
 clean:
 	rm -rf $(PROG)
