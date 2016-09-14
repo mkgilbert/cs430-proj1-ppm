@@ -143,6 +143,7 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int w, int h) {
     // reads p3 data and stores in
     return 0;
 }
+
 int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     int i, j, k;
     int ptr;
@@ -155,6 +156,7 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
         perror("Error: read_p3_data: reading remaining bytes");
         return -1;
     }
+
     char *data = malloc(sizeof(char)*b);
     int read;
     if ((read = fread(data, b, 1, fh)) < 0) {
@@ -166,23 +168,19 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     // make sure we're not starting at a space
     while (isspace(*data) && (*data != '\0')) { data++; };
 
-    for (i=0; i<height; i++) {
-        for (j=0; j<width; j++) {
+    for (i=0; i<height*width; i++) {
             counter++;
             RGBPixel px;
-            pixmap[i * width + j] = px;
-            // TODO: refactor these into a loop and check values
+            pixmap[i] = px;
             for (k=0; k<3; k++) {
                 ptr = 0;
                 while (TRUE) {
                     if (isspace(*data)) {
-                        printf("found space '%c'\n", *data);
                         *(num + ptr) = '\0';
                         data++;
                         break;
                     }
                     else {
-                        printf("found num %c\n", *data);
                         *(num + ptr) = *data++;
                         ptr++;
                     }
@@ -200,7 +198,6 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
                     printf("b: %d\n", atoi(num));
                 }
             }
-        }
     }
     if ((c = fgetc(fh)) != EOF) {
         perror("Error: There is more data left in image than what was read");
@@ -210,6 +207,15 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     return 0;
 }
 
+int write_p3_data(FILE *fh, image *img) {
+    int i,j;
+    for (i=0; i<(img->height*img->width); i++) {
+            fprintf(fh, "%d ", img->pixmap[i].r);
+            fprintf(fh, "%d ", img->pixmap[i].g);
+            fprintf(fh, "%d\n", img->pixmap[i].b);
+    }
+    return 0;
+}
 int write_header(FILE *fh, header *hdr) {
     int ret_val = 0;
     ret_val = fputs("P", fh);
@@ -288,6 +294,12 @@ int main(int argc, char *argv[]){
         return -1;
     }
 
+    ret_val = write_header(out_ptr, hdr);
+    if (ret_val < 0) {
+        perror("Error: main: writing header");
+        return -1;
+    }
+
     // read image data
     // create image struct
     image img;
@@ -300,8 +312,8 @@ int main(int argc, char *argv[]){
         perror("Error: Problem reading image data");
         return -1;
     }
-    print_pixels(img.pixmap, img.width, img.height);
-
+    //print_pixels(img.pixmap, img.width, img.height);
+    write_p3_data(out_ptr, &img);
     // test output 
     // put in header info to new file
     //ret_val = write_header(out_ptr, hdr);
