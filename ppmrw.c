@@ -176,7 +176,6 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
         for (j=0; j<width; j++) {
             counter++;
             RGBPixel px;
-            pixmap[i * width + j] = px;
             for (k=0; k<3; k++) {
                 num = *data++;
                 if (num < 0 || num > 255) {
@@ -197,12 +196,15 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
                     printf("b: %d\n", num);
                 }
             }
+            pixmap[i * width + j] = px;
         }
     }
     return 0;
 }
 
 int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
+    printf("read_p3_data pixmap pointer: %p\n", pixmap);
+
     int i, j, k;
     int ptr;
     char num[4]; // build a number from chars read in from file
@@ -229,18 +231,17 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
         for (j=0; j<width; j++) {
             counter++;
             RGBPixel px;
-            pixmap[i * width + j] = px;
             for (k=0; k<3; k++) {
                 ptr = 0;
                 while (TRUE) {
                     if (isspace(*data)) {
-                        printf("found space '%c'\n", *data);
+                        //printf("found space '%c'\n", *data);
                         *(num + ptr) = '\0';
                         data++;
                         break;
                     }
                     else {
-                        printf("found num %c\n", *data);
+                        //printf("found num %c\n", *data);
                         *(num + ptr) = *data++;
                         ptr++;
                     }
@@ -257,12 +258,13 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
                 }
                 else if (k == 1) {
                     px.g = atoi(num);
-                    printf("g: %d\n", atoi(num));
+                    //printf("g: %d\n", atoi(num));
                 }
                 else {
                     px.b = atoi(num);
-                    printf("b: %d\n", atoi(num));
+                    //printf("b: %d\n", atoi(num));
                 }
+                pixmap[i * width + j] = px;
             }
         }
     }
@@ -308,14 +310,15 @@ int write_header(FILE *fh, header *hdr) {
 }
 
 void print_pixels(RGBPixel *pixmap, int width, int height) {
+    printf("pixmap pointer: %p\n", pixmap);
     int i,j;
     int counter = 0;
     for (i=0; i<height; i++) {
         for (j=0; j<width; j++) {
             counter++;
-            printf("r: %d, ", pixmap[i * width + j].r);
-            printf("g: %d ,", pixmap[i * width + j].g);
-            printf("b: %d\n", pixmap[i * width + j].b);
+            //printf("r: %d, ", pixmap[i * width + j].r);
+            //printf("g: %d ,", pixmap[i * width + j].g);
+            //printf("b: %d\n", pixmap[i * width + j].b);
         }
     }
     printf("print_pixels count: %d\n", counter);
@@ -390,6 +393,10 @@ int main(int argc, char *argv[]){
         perror("Error: main: Problem reading image data");
         return -1;
     }
+
+    printf("pixmap one red: %d\n", img.pixmap[0].r);
+    printf("pixmap one green: %d\n", img.pixmap[0].g);
+    printf("pixmap one blue: %d\n", img.pixmap[0].b);
 
     // testing
     //print_pixels(img.pixmap, img.width, img.height);
