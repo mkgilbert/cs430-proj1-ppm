@@ -23,6 +23,34 @@ int get_infile_size(FILE *fp) {
     return ftell(fp);
 }
 
+int check_for_comments(FILE *fh, char c) {
+    /* jumps over comments and onto the next line, then recursively checks again */
+    printf("c is %c\n", c);
+    // skip any leading white space
+    while (isspace(c) && c != EOF) { c = fgetc(fh); }
+    printf("now c is %c\n", c);
+
+    // base case, current char, c, is not a pound sign
+    if (c != '#') {
+        printf("base case: c is %c\n", c);
+        fseek(fh, -1, SEEK_CUR); // backup one character
+        return 0;
+    }
+    else { // c is a comment, so read to end of line
+        while (c != '\n' && c != EOF) {
+            printf("    while loop: c is %c\n", c);
+            c = fgetc(fh);
+        }
+        if (c == EOF) {
+            perror("Error: Premature end of file");
+            return -1;
+        }
+        else { // c is '\n', so grab the next char and check recursively
+            return check_for_comments(fh, fgetc(fh));
+        }
+    }
+}
+
 char **read_comments(FILE *fh) {
     // reads comments in a file into a char array
     char *line = NULL;      // temporary line reader
@@ -72,7 +100,7 @@ int read_header(FILE *fh, header *hdr) {
         is_p3 = FALSE;
     }
     else {
-        perror("Error: Unsupported file type found in header");
+        perror("Error: Unsupported magic number found in header");
         return -1;
     }
     
@@ -206,7 +234,7 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
     int i, j, k;
     int ptr;
-    char num[4]; // build a number from chars read in from file
+    char num[4];        // holds string repr. of a 0-255 value
     char c = '\0';      // holds current byte being read
     int counter = 0;
     // read all remaining data from image into buffer
