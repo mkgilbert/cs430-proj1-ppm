@@ -61,7 +61,7 @@ int read_header(FILE *fh, header *hdr) {
     // get file type
     c = fgetc(fh);
     if (c != 'P') {
-        perror("Error: first character must be 'P'");
+        perror("Error: Invalid ppm file. First character is not 'P'");
         return -1;
     }
     c = fgetc(fh);
@@ -72,7 +72,7 @@ int read_header(FILE *fh, header *hdr) {
         is_p3 = FALSE;
     }
     else {
-        perror("Error: No file type found in header");
+        perror("Error: Unsupported file type found in header");
         return -1;
     }
     
@@ -82,9 +82,9 @@ int read_header(FILE *fh, header *hdr) {
     else {
         hdr->file_type = 6;
     }
-    // TODO: change to isspace()
-    if (fgetc(fh) != '\n') {
-        perror("Error: must be a newline after file type");
+    c = fgetc(fh);
+    if (!isspace(c)) {
+        perror("Error: must be a newline or space after file type");
         return -1;
     }
     
@@ -161,7 +161,7 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     // read all remaining data from image into buffer
     int b = bytes_left(fh);     // get how many bytes to read to get to end
     if (b < 0) {
-        perror("Error: read_p3_data: reading remaining bytes");
+        perror("Error: read_p3_data: Problem reading remaining bytes in image");
         return -1;
     }
 
@@ -203,7 +203,6 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 }
 
 int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
-    printf("read_p3_data pixmap pointer: %p\n", pixmap);
 
     int i, j, k;
     int ptr;
@@ -254,7 +253,7 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
                 if (k == 0) {
                     px.r = atoi(num);
-                    printf("r: %d\n", atoi(num));
+                    //printf("r: %d\n", atoi(num));
                 }
                 else if (k == 1) {
                     px.g = atoi(num);
@@ -316,9 +315,9 @@ void print_pixels(RGBPixel *pixmap, int width, int height) {
     for (i=0; i<height; i++) {
         for (j=0; j<width; j++) {
             counter++;
-            //printf("r: %d, ", pixmap[i * width + j].r);
-            //printf("g: %d ,", pixmap[i * width + j].g);
-            //printf("b: %d\n", pixmap[i * width + j].b);
+            printf("r: %d, ", pixmap[i * width + j].r);
+            printf("g: %d ,", pixmap[i * width + j].g);
+            printf("b: %d\n", pixmap[i * width + j].b);
         }
     }
     printf("print_pixels count: %d\n", counter);
@@ -337,16 +336,26 @@ int main(int argc, char *argv[]){
 
     in_ptr = fopen(argv[2], "rb");
     out_ptr = fopen(argv[3], "wb");
+    
+    if (in_ptr == NULL) {
+        perror("Error: input file can't be opened");
+        return 1;
+    }
+    if (out_ptr == NULL) {
+        perror("Error: output file can't be opened");
+        return 1;
+    }
 
-    // test get_header function
+    // allocate space for header information
     header *hdr = (header *)malloc(sizeof(header));
+    // read header of input file
     read_header(in_ptr, hdr);
 
     // read one more byte before reading data (should be a space-type character)
     c = fgetc(in_ptr);
     if (!isspace(c)) {
         perror("Error: No delimiter after header in input file");
-        return -1;
+        return 1;
     }
 
     printf("File type: P%d\n", hdr->file_type);
@@ -358,8 +367,9 @@ int main(int argc, char *argv[]){
     printf("Height: %d\n", hdr->height);
     printf("Max Color Value: %d\n", hdr->max_color_val);
    
+    // store the file type of the origin file so we know what we're converting from
     int origin_file_type = hdr->file_type;
-    // determine which ppm version to make and change the header
+    // change the header file type to what the destinationn file type should be
     if (atoi(argv[1]) == 3) {
         hdr->file_type = 3;
     }
@@ -371,13 +381,14 @@ int main(int argc, char *argv[]){
         return -1;
     }
 
+    // write header info to output file
     ret_val = write_header(out_ptr, hdr);
     if (ret_val < 0) {
         perror("Error: main: Problem writing header to output file");
         return -1;
     }
 
-    // create image struct
+    // create img struct to store relevant image info
     image img;
     img.width = hdr->width;
     img.height = hdr->height;
@@ -394,14 +405,10 @@ int main(int argc, char *argv[]){
         return -1;
     }
 
-    printf("pixmap one red: %d\n", img.pixmap[0].r);
-    printf("pixmap one green: %d\n", img.pixmap[0].g);
-    printf("pixmap one blue: %d\n", img.pixmap[0].b);
-
     // testing
     //print_pixels(img.pixmap, img.width, img.height);
     
-    // write image data
+    // write image data to destination file
     if (atoi(argv[1]) == 3)
         ret_val = write_p3_data(out_ptr, &img);
     else
@@ -411,6 +418,7 @@ int main(int argc, char *argv[]){
         perror("Error: main: Problem writing image data to output file");
         return -1;
     }
+
     // cleanup
     free(hdr->comments);
     free(img.pixmap);
