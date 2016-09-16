@@ -208,13 +208,19 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     unsigned char num; // build a number from chars read in from file
     int counter = 0;
     // read all remaining data from image into buffer
-    int b = bytes_left(fh);     // get how many bytes to read to get to end
+    int b = bytes_left(fh);
+    // check for error reading bytes_left()
     if (b < 0) {
         perror("Error: read_p3_data: Problem reading remaining bytes in image");
         return -1;
     }
+    // make sure data left is the right size
+    if (b != width*height) {
+        perror("Error: read_p3_data: size of image data doesn't match given dimensions in the header");
+        return -1;
+    }
 
-    // temp buffer for image data + 1 null character
+    // create temp buffer for image data + 1 for null char
     unsigned char data[b+1];
     unsigned char *data_p;
     int read;
@@ -224,15 +230,17 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
         perror("Error: fread() returned an error when reading data");
         return -1;
     }
-    // bounds checking
+
+    // double check number of bytes actually read is correct
     if (read < b || read > b) {
-        perror("Error: image data doesn't match header dimensions");
+        perror("Error: read_p3_data: image data doesn't match header dimensions");
         return -1;
     }
     printf("read: %d\n", read);
     printf("b: %d\n", b);
     data[b] = '\0';
 
+    // loop through buffer and populate RGBPixel array
     for (i=0; i<height; i++) {
         for (j=0; j<width; j++) {
             counter++;
@@ -240,7 +248,7 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
             for (k=0; k<3; k++) {
                 num = *data_p++;
                 if (num < 0 || num > 255) {
-                    perror("Error: found a pixel value out of range");
+                    perror("Error: read_p3_data: found a pixel value out of range");
                     return -1;
                 }
 
@@ -271,33 +279,42 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     char c = '\0';      // holds current byte being read
     int counter = 0;
     // read all remaining data from image into buffer
-    int b = bytes_left(fh);     // get how many bytes to read to get to end
+    int b = bytes_left(fh); 
+    // check for error reading bytes_left()
     if (b < 0) {
         perror("Error: read_p3_data: reading remaining bytes");
         return -1;
     }
+    // make sure data left is the right size
     if (b != width*height) {
         perror("Error: read_p3_data: size of image data doesn't match given dimensions in the header");
         return -1;
     }
-    // temp buffer for image data
+
+    // create temp buffer for image data + 1 for null char
     char data[b+1];
     char *data_p = data;
     int read;
+
+    // read the rest of the file and check that what remains is the right size
     if ((read = fread(data, 1, b, fh)) < 0) {
         perror("Error: fread returned an error when reading data");
         return -1;
     }
     printf("read: %d\n", read);
     printf("b: %d\n", b);
+    
+    // double check number of bytes actually read is correct
     if (read < b || read > b) {
         perror("Error: image data doesn't match header dimensions");
         return -1;
     }
     data[b] = '\0';
-    // make sure we're not starting at a space
+
+    // make sure we're not starting at a space or newline
     while (isspace(*data_p) && (*data_p != '\0')) { data_p++; };
 
+    // loop through buffer and populate RGBPixel array
     for (i=0; i<height; i++) {
         for (j=0; j<width; j++) {
             counter++;
