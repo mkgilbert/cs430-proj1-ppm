@@ -25,20 +25,16 @@ int get_infile_size(FILE *fp) {
 
 int check_for_comments(FILE *fh, char c) {
     /* jumps over comments and onto the next line, then recursively checks again */
-    printf("c is %c\n", c);
     // skip any leading white space
     while (isspace(c) && c != EOF) { c = fgetc(fh); }
-    printf("now c is %c\n", c);
 
     // base case, current char, c, is not a pound sign
     if (c != '#') {
-        printf("base case: c is %c\n", c);
         fseek(fh, -1, SEEK_CUR); // backup one character
         return 0;
     }
     else { // c is a comment, so read to end of line
         while (c != '\n' && c != EOF) {
-            printf("    while loop: c is %c\n", c);
             c = fgetc(fh);
         }
         if (c == EOF) {
@@ -49,6 +45,14 @@ int check_for_comments(FILE *fh, char c) {
             return check_for_comments(fh, fgetc(fh));
         }
     }
+}
+
+int check_for_newline(char c) {
+    if (!isspace(c)) {
+        perror("Error: must be a newline or space after file type");
+        return -1;
+    }
+    return 0;
 }
 
 char **read_comments(FILE *fh) {
@@ -83,13 +87,14 @@ char **read_comments(FILE *fh) {
 }
 
 int read_header(FILE *fh, header *hdr) {
+    int ret_val;
     char c;     // temporary char read in from file
     boolean is_p3; // determines file type being P3 or P6
 
     // get file type
     c = fgetc(fh);
     if (c != 'P') {
-        perror("Error: Invalid ppm file. First character is not 'P'");
+        perror("Error: read_header: Invalid ppm file. First character is not 'P'");
         return -1;
     }
     c = fgetc(fh);
@@ -100,7 +105,7 @@ int read_header(FILE *fh, header *hdr) {
         is_p3 = FALSE;
     }
     else {
-        perror("Error: Unsupported magic number found in header");
+        perror("Error: read_header: Unsupported magic number found in header");
         return -1;
     }
     
@@ -110,33 +115,50 @@ int read_header(FILE *fh, header *hdr) {
     else {
         hdr->file_type = 6;
     }
-    c = fgetc(fh);
-    if (!isspace(c)) {
-        perror("Error: must be a newline or space after file type");
+    ret_val = check_for_newline(fgetc(fh));
+    if (ret_val < 0) {
+        perror("Error: read_header: No separator found after magic number");
         return -1;
     }
-    
-    // read in comments
-    c = fgetc(fh);
-    if (c == '#') {
-        // go back one space to get to beginning of comment
-        fseek(fh, -1, SEEK_CUR);
-
-        char** cmts = read_comments(fh);
-        if (cmts == NULL) {
-            perror("Error: found a '#' but got no comments...");
-            return -1;
-        }
-        // allocate space in hdr struct for the comments and copy them in
-        hdr->comments = cmts; // don't allocate maybe? just point???
-        // testing output
-        //int8_t ptr = 0;
-        //while (cmts[ptr] != NULL)
-        //    printf("%s\n", cmts[ptr++]);
+    ret_val = check_for_comments(fh, fgetc(fh));
+    if (ret_val < 0) {
+        perror("Error: read_header: Problem reading comment after magic number");
+        return -1;
     }
 
-    // read width and height
-    fscanf(fh, "%d %d", &(hdr->width), &(hdr->height));
+    // read width
+    fscanf(fh, "%d", &(hdr->width));
+    if (hdr->width <= 0 || hdr->width == EOF) {
+        perror("Error: read_header: Image width not found");
+        return -1;
+    }
+    ret_val = check_for_newline(fgetc(fh));
+    if (ret_val < 0) {
+        perror("Error: read_header: No separator found after width");
+        return -1;
+    }
+    ret_val = check_for_comments(fh, fgetc(fh));
+    if (ret_val < 0) {
+        perror("Error: read_header: Problem reading comment after width");
+        return -1;
+    }
+
+    // read height
+    fscanf(fh, "%d", &(hdr->height));
+    if (hdr->height <= 0 || hdr->height == EOF) {
+        perror("Error: read_header: Image height not found");
+        return -1;
+    }
+    ret_val = check_for_newline(fgetc(fh));
+    if (ret_val < 0) {
+        perror("Error: read_header: No separator found after height");
+        return -1;
+    }
+    ret_val = check_for_comments(fh, fgetc(fh));
+    if (ret_val < 0) {
+        perror("Error: read_header: Problem reading comment after height");
+        return -1;
+    }
     // TODO: Error checking
     
     fscanf(fh, "%d", &(hdr->max_color_val));
@@ -164,7 +186,6 @@ int bytes_left(FILE *fh) {
         perror("Error: bytes_left: bytes remaining <= 0");
         return -1;
     }
-    
     return bytes;
 }
 
@@ -195,11 +216,14 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
     unsigned char *data = malloc(sizeof(unsigned char)*b);
     int read;
-    if ((read = fread(data, b, 1, fh)) < 0) {
+    if ((read = fread(data, 1, b, fh)) < 0) {
         perror("Error: fread() returned an error when reading data");
         return -1;
     }
+    printf("read: %d\n", read);
+    printf("b: %d\n", b);
     data[b] = '\0';
+    // TODO: add bounds checking on read and b
     for (i=0; i<height; i++) {
         for (j=0; j<width; j++) {
             counter++;
@@ -244,15 +268,23 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
         return -1;
     }
 
-    char *data = malloc(sizeof(char)*b);
+    // temp buffer for image data
+    char data[b+1];
+    char *data_p = data;
     int read;
-    if ((read = fread(data, b, 1, fh)) < 0) {
+    if ((read = fread(data, 1, b, fh)) < 0) {
         perror("Error: fread returned an error when reading data");
+        return -1;
+    }
+    printf("read: %d\n", read);
+    printf("b: %d\n", b);
+    if (read < b || read > b) {
+        perror("Error: image data doesn't match header dimensions");
         return -1;
     }
     data[b] = '\0';
     // make sure we're not starting at a space
-    while (isspace(*data) && (*data != '\0')) { data++; };
+    while (isspace(*data_p) && (*data_p != '\0')) { data_p++; };
 
     for (i=0; i<height; i++) {
         for (j=0; j<width; j++) {
@@ -261,15 +293,15 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
             for (k=0; k<3; k++) {
                 ptr = 0;
                 while (TRUE) {
-                    if (isspace(*data)) {
+                    if (isspace(*data_p)) {
                         //printf("found space '%c'\n", *data);
                         *(num + ptr) = '\0';
-                        data++;
+                        data_p++;
                         break;
                     }
                     else {
                         //printf("found num %c\n", *data);
-                        *(num + ptr) = *data++;
+                        *(num + ptr) = *data_p++;
                         ptr++;
                     }
                 }
@@ -387,14 +419,10 @@ int main(int argc, char *argv[]){
     }
 
     printf("File type: P%d\n", hdr->file_type);
-    printf("Comments: \n");
-    int8_t ptr = 0;
-    while (hdr->comments[ptr] != NULL)
-        printf("%s", hdr->comments[ptr++]);
     printf("Width: %d\n", hdr->width);
     printf("Height: %d\n", hdr->height);
     printf("Max Color Value: %d\n", hdr->max_color_val);
-   
+    
     // store the file type of the origin file so we know what we're converting from
     int origin_file_type = hdr->file_type;
     // change the header file type to what the destinationn file type should be
