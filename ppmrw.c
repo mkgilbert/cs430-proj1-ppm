@@ -55,37 +55,6 @@ int check_for_newline(char c) {
     return 0;
 }
 
-char **read_comments(FILE *fh) {
-    // reads comments in a file into a char array
-    char *line = NULL;      // temporary line reader
-    size_t len = 0;            // temp line length
-    size_t read;               // number of bytes read
-    int ptr = 0;            // pointer to index of cmts variable
-    char **cmts = malloc(sizeof(char*) * MAX_SIZE);
-
-    if (fgetc(fh) == '#') {
-        fseek(fh, -1, SEEK_CUR); // move ahead 1 byte
-        while ((read = getline(&line, &len, fh)) != -1) {
-            if (line[0] != '#') {
-                // we've now read 1 too many lines. Back up
-                fseek(fh, read*(-1), SEEK_CUR);
-                break;  // we've reached the end of the comments
-            }
-            // allocate space for each line in cmts
-            cmts[ptr] = malloc(sizeof(char) * strlen(line));
-            strcpy(cmts[ptr], line);
-            ptr++;
-        }
-        // null terminate after last line
-        cmts[ptr] = NULL;
-        free(line);
-    }
-    else {
-        perror("Error: The starting position is not a comment");
-    }
-    return cmts;
-}
-
 int read_header(FILE *fh, header *hdr) {
     int ret_val;
     char c;     // temporary char read in from file
