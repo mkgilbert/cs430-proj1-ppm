@@ -214,22 +214,31 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
         return -1;
     }
 
-    unsigned char *data = malloc(sizeof(unsigned char)*b);
+    // temp buffer for image data + 1 null character
+    unsigned char data[b+1];
+    unsigned char *data_p;
     int read;
+
+    // read the rest of the file and check that what remains is the right size
     if ((read = fread(data, 1, b, fh)) < 0) {
         perror("Error: fread() returned an error when reading data");
+        return -1;
+    }
+    // bounds checking
+    if (read < b || read > b) {
+        perror("Error: image data doesn't match header dimensions");
         return -1;
     }
     printf("read: %d\n", read);
     printf("b: %d\n", b);
     data[b] = '\0';
-    // TODO: add bounds checking on read and b
+
     for (i=0; i<height; i++) {
         for (j=0; j<width; j++) {
             counter++;
             RGBPixel px;
             for (k=0; k<3; k++) {
-                num = *data++;
+                num = *data_p++;
                 if (num < 0 || num > 255) {
                     perror("Error: found a pixel value out of range");
                     return -1;
@@ -237,15 +246,15 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
                 if (k == 0) {
                     px.r = num;
-                    printf("r: %d\n", num);
+                    //printf("r: %d\n", num);
                 }
                 else if (k == 1) {
                     px.g = num;
-                    printf("g: %d\n", num);
+                    //printf("g: %d\n", num);
                 }
                 else {
                     px.b = num;
-                    printf("b: %d\n", num);
+                    //printf("b: %d\n", num);
                 }
             }
             pixmap[i * width + j] = px;
@@ -267,7 +276,10 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
         perror("Error: read_p3_data: reading remaining bytes");
         return -1;
     }
-
+    if (b != width*height) {
+        perror("Error: read_p3_data: size of image data doesn't match given dimensions in the header");
+        return -1;
+    }
     // temp buffer for image data
     char data[b+1];
     char *data_p = data;
