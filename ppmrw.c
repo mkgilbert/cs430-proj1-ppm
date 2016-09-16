@@ -38,7 +38,7 @@ int check_for_comments(FILE *fh, char c) {
             c = fgetc(fh);
         }
         if (c == EOF) {
-            perror("Error: Premature end of file");
+            perror("Error: check_for_comments: Premature end of file");
             return -1;
         }
         else { // c is '\n', so grab the next char and check recursively
@@ -49,7 +49,7 @@ int check_for_comments(FILE *fh, char c) {
 
 int check_for_newline(char c) {
     if (!isspace(c)) {
-        perror("Error: must be a newline or space after file type");
+        perror("Error: check_for_newline: missing newline or space");
         return -1;
     }
     return 0;
@@ -179,12 +179,9 @@ int bytes_left(FILE *fh) {
     // returns the number of bytes left in a file
     int bytes;
     int pos = ftell(fh);    // get current pointer
-    printf("pos: %d\n", pos);
     fseek(fh, 0, SEEK_END);
     int end = ftell(fh);
-    printf("end: %d\n", end);
     bytes = end - pos;
-    printf("number of bytes left: %d\n", bytes);
     fseek(fh, pos, SEEK_SET); // put the pointer back
     if (bytes <= 0) {
         perror("Error: bytes_left: bytes remaining <= 0");
@@ -211,7 +208,7 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     int b = bytes_left(fh);
     // check for error reading bytes_left()
     if (b < 0) {
-        perror("Error: read_p3_data: Problem reading remaining bytes in image");
+        perror("Error: read_p6_data: Problem reading remaining bytes in image");
         return -1;
     }
 
@@ -222,17 +219,16 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
     // read the rest of the file and check that what remains is the right size
     if ((read = fread(data, 1, b, fh)) < 0) {
-        perror("Error: fread() returned an error when reading data");
+        perror("Error: read_p6_data: fread() returned an error when reading data");
         return -1;
     }
 
     // double check number of bytes actually read is correct
     if (read < b || read > b) {
-        perror("Error: read_p3_data: image data doesn't match header dimensions");
+        perror("Error: read_p6_data: image data doesn't match header dimensions");
         return -1;
     }
-    printf("read: %d\n", read);
-    printf("b: %d\n", b);
+    // null terminate the buffer
     data[b] = '\0';
 
     int i, j, k;        // loop variables
@@ -245,12 +241,12 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
             for (k=0; k<3; k++) {
                 // check that we haven't read more than what is available
                 if (*data_p == '\0') {
-                    perror("Error: read_p3_data: Image data is missing or header dimensions are wrong");
+                    perror("Error: read_p6_data: Image data is missing or header dimensions are wrong");
                     return -1;
                 }
                 num = *data_p++;
                 if (num < 0 || num > 255) {
-                    perror("Error: read_p3_data: found a pixel value out of range");
+                    perror("Error: read_p6_data: found a pixel value out of range");
                     return -1;
                 }
 
@@ -272,7 +268,7 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     }
     // check if there's still data left
     if (*data_p != '\0') {
-        perror("Error: read_p3_data: Extra image data was found in file");
+        perror("Error: read_p6_data: Extra image data was found in file");
         return -1;
     }
     return 0;
@@ -295,7 +291,7 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
     // read the rest of the file and check that what remains is the right size
     if ((read = fread(data, 1, b, fh)) < 0) {
-        perror("Error: fread returned an error when reading data");
+        perror("Error: read_p3_data: fread returned an error when reading data");
         return -1;
     }
     printf("read: %d\n", read);
@@ -303,9 +299,10 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     
     // double check number of bytes actually read is correct
     if (read < b || read > b) {
-        perror("Error: image data doesn't match header dimensions");
+        perror("Error: read_p3_data: image data doesn't match header dimensions");
         return -1;
     }
+    // null terminate the buffer
     data[b] = '\0';
 
     // make sure we're not starting at a space or newline
@@ -342,7 +339,7 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
                 }
 
                 if (atoi(num) < 0 || atoi(num) > 255) {
-                    perror("Error: found a pixel value out of range");
+                    perror("Error: read_p3_data: found a pixel value out of range");
                     return -1;
                 }
 
@@ -372,10 +369,8 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
 int write_p3_data(FILE *fh, image *img) {
     int i,j;
-    int counter = 0;
     for (i=0; i<(img->height); i++) {
         for (j=0; j<(img->width); j++) {
-            counter++;
             fprintf(fh, "%d ", img->pixmap[i * img->width + j].r);
             fprintf(fh, "%d ", img->pixmap[i * img->width + j].g);
             fprintf(fh, "%d\n", img->pixmap[i * img->width + j].b);
@@ -424,7 +419,7 @@ void print_pixels(RGBPixel *pixmap, int width, int height) {
 
 int main(int argc, char *argv[]){
     if (argc != 4) {
-        perror("Error: ppmrw requires 3 arguments");
+        perror("Error: main: ppmrw requires 3 arguments");
         return 1;
     }
 
@@ -437,23 +432,28 @@ int main(int argc, char *argv[]){
     out_ptr = fopen(argv[3], "wb");
     
     if (in_ptr == NULL) {
-        perror("Error: input file can't be opened");
+        perror("Error: main: Input file can't be opened");
         return 1;
     }
     if (out_ptr == NULL) {
-        perror("Error: output file can't be opened");
+        perror("Error: main: Output file can't be opened");
         return 1;
     }
 
     // allocate space for header information
     header *hdr = (header *)malloc(sizeof(header));
-    // read header of input file
-    read_header(in_ptr, hdr);
 
+    // read header of input file
+    ret_val = read_header(in_ptr, hdr);
+    
+    if (ret_val < 0) {
+        perror("Error: main: Problem reading header");
+        return 1;
+    }
     // read one more byte before reading data (should be a space-type character)
     c = fgetc(in_ptr);
     if (!isspace(c)) {
-        perror("Error: No delimiter after header in input file");
+        perror("Error: main: No delimiter after header in input file");
         return 1;
     }
 
@@ -472,7 +472,7 @@ int main(int argc, char *argv[]){
         hdr->file_type = 6;
     }
     else {
-        perror("Error: invalid file type specified. Choices: 3|6");
+        perror("Error: main: invalid file type specified. Choices: 3|6");
         return -1;
     }
 
@@ -515,7 +515,6 @@ int main(int argc, char *argv[]){
     }
 
     // cleanup
-    free(hdr->comments);
     free(img.pixmap);
     free(hdr);
     fclose(in_ptr);
