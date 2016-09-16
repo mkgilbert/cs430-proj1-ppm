@@ -13,15 +13,6 @@
 #include <unistd.h>
 #include "include/ppmrw.h"
 
-int get_infile_size(FILE *fp) {
-    if (fp == NULL) {
-        perror("Error: ");
-        return -1;
-    }        
-    // seek to end and return size
-    fseek(fp, 0, 2);
-    return ftell(fp);
-}
 
 int check_for_comments(FILE *fh, char c) {
     /* jumps over comments and onto the next line, then recursively checks again */
@@ -221,15 +212,12 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
                 if (k == 0) {
                     px.r = num;
-                    //printf("r: %d\n", num);
                 }
                 else if (k == 1) {
                     px.g = num;
-                    //printf("g: %d\n", num);
                 }
                 else {
                     px.b = num;
-                    //printf("b: %d\n", num);
                 }
             }
             pixmap[i * width + j] = px;
@@ -263,8 +251,6 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
         perror("Error: read_p3_data: fread returned an error when reading data");
         return -1;
     }
-    printf("read: %d\n", read);
-    printf("b: %d\n", b);
     
     // double check number of bytes actually read is correct
     if (read < b || read > b) {
@@ -280,7 +266,6 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     int i, j, k;        // loop variables
     int ptr;            // current index of the num array
     char num[4];        // holds string repr. of a 0-255 value
-    char c = '\0';      // holds current byte being read
 
     // loop through buffer and populate RGBPixel array
     for (i=0; i<height; i++) {
@@ -295,13 +280,11 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
                         return -1;
                     }
                     if (isspace(*data_p)) {
-                        //printf("found space '%c'\n", *data);
                         *(num + ptr) = '\0';
                         data_p++;
                         break;
                     }
                     else {
-                        //printf("found num %c\n", *data);
                         *(num + ptr) = *data_p++;
                         ptr++;
                     }
@@ -314,15 +297,12 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
                 if (k == 0) {
                     px.r = atoi(num);
-                    //printf("r: %d\n", atoi(num));
                 }
                 else if (k == 1) {
                     px.g = atoi(num);
-                    //printf("g: %d\n", atoi(num));
                 }
                 else {
                     px.b = atoi(num);
-                    //printf("b: %d\n", atoi(num));
                 }
                 pixmap[i * width + j] = px;
             }
@@ -368,7 +348,6 @@ int write_header(FILE *fh, header *hdr) {
     if (ret_val < 0) {
         return -4;
     }
-    printf("successfully wrote header.\n");
     return ret_val;
 }
 
@@ -426,11 +405,6 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
-    printf("File type: P%d\n", hdr->file_type);
-    printf("Width: %d\n", hdr->width);
-    printf("Height: %d\n", hdr->height);
-    printf("Max Color Value: %d\n", hdr->max_color_val);
-    
     // store the file type of the origin file so we know what we're converting from
     int origin_file_type = hdr->file_type;
     // change the header file type to what the destinationn file type should be
@@ -451,6 +425,7 @@ int main(int argc, char *argv[]){
         perror("Error: main: Problem writing header to output file");
         return -1;
     }
+    printf("successfully wrote header.\n");
 
     // create img struct to store relevant image info
     image img;
@@ -482,7 +457,8 @@ int main(int argc, char *argv[]){
         perror("Error: main: Problem writing image data to output file");
         return -1;
     }
-
+    printf("successfully wrote image data\n");
+    
     // cleanup
     free(img.pixmap);
     free(hdr);
