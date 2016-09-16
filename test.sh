@@ -1,6 +1,7 @@
 #!/bin/bash
 # test the ppmrw program
-# 3 to 3
+
+make clean && make &&
 echo testing 3 to 3 &&
 ./ppmrw 3 data/test_ascii.ppm out.ppm &&
 echo testing 3 to 6 &&

@@ -144,8 +144,8 @@ int read_header(FILE *fh, header *hdr) {
     }
 
     // read height
-    fscanf(fh, "%d", &(hdr->height));
-    if (hdr->height <= 0 || hdr->height == EOF) {
+    ret_val = fscanf(fh, "%d", &(hdr->height));
+    if (ret_val <= 0 || ret_val == EOF) {
         perror("Error: read_header: Image height not found");
         return -1;
     }
@@ -159,12 +159,16 @@ int read_header(FILE *fh, header *hdr) {
         perror("Error: read_header: Problem reading comment after height");
         return -1;
     }
-    // TODO: Error checking
     
-    fscanf(fh, "%d", &(hdr->max_color_val));
-    // TODO: Type Error checking
-    if (hdr->max_color_val > 255) {
-        perror("Error: max color value must be <= 255");
+    // read max color value
+    ret_val = fscanf(fh, "%d", &(hdr->max_color_val));
+    if (ret_val <= 0 || ret_val == EOF) {
+        perror("Error: read_header: Max color value not found");
+        return -1;
+    }
+    // check bounds on max color value
+    if (hdr->max_color_val > 255 || hdr->max_color_val < 0) {
+        perror("Error: max color value must be >= 0 and <= 255");
         return -1;
     }
 
@@ -398,7 +402,6 @@ int write_header(FILE *fh, header *hdr) {
 }
 
 void print_pixels(RGBPixel *pixmap, int width, int height) {
-    printf("pixmap pointer: %p\n", pixmap);
     int i,j;
     int counter = 0;
     for (i=0; i<height; i++) {
