@@ -269,12 +269,10 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     for (i=0; i<height; i++) {
         for (j=0; j<width; j++) {
             RGBPixel px;
-            printf("counter: %d\n", counter++);
             for (k=0; k<3; k++) {
                 ptr = 0;
                 while (TRUE) {
                     // check that we haven't read more than what is available
-                    printf("'%c'\n", *data_p);
                     if (*data_p == '\0') {
                         perror("Error: read_p3_data: Image data is missing or header dimensions are wrong");
                         return -1;
@@ -299,15 +297,12 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
                 if (k == 0) {
                     px.r = atoi(num);
-                    printf("r: %d ", px.r);
                 }
                 else if (k == 1) {
                     px.g = atoi(num);
-                    printf("g: %d ", px.g);
                 }
                 else {
                     px.b = atoi(num);
-                    printf("b: %d\n", px.b);
                 }
                 pixmap[i * width + j] = px;
             }
@@ -317,14 +312,8 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     // skip any white space that may remain at the end of the data
     while (isspace(*data_p) && (*data_p != '\0')) { data_p++; };
     
-    printf("width: %d\n", width);
-    printf("height: %d\n", height);
     // check if there's still data left
     if (*data_p != '\0') {
-        for (i=0; i<500; i++){
-            printf("%c\n", *data_p++);
-        }
-        printf("last spot: %c\n", *data_p);
         perror("Error: read_p3_data: Extra image data was found in file");
         return -1;
     }
