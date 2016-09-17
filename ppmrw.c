@@ -88,8 +88,12 @@ int read_header(FILE *fh, header *hdr) {
 
     // read width
     fscanf(fh, "%d", &(hdr->width));
-    if (hdr->width <= 0 || hdr->width == EOF) {
-        perror("Error: read_header: Image width not found");
+    if (hdr->width <= 0) {
+        perror("Error: read_header: Image width cannot be less than zero");
+        return -1;
+    }
+    if (hdr->width == EOF) {
+        perror("Error: read_header: Image width not found. Premature EOF");
         return -1;
     }
     ret_val = check_for_newline(fgetc(fh));
@@ -162,7 +166,7 @@ int write_p6_data(FILE *fh, image *img) {
     return 0;
 }
 
-int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
+int read_p6_data(FILE *fh, image *img) {
     // reads p6 data and stores in buffer
     // read all remaining data from image into buffer
     int b = bytes_left(fh);
@@ -193,8 +197,8 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     unsigned char num;  // build a number from chars read in from file
 
     // loop through buffer and populate RGBPixel array
-    for (i=0; i<height; i++) {
-        for (j=0; j<width; j++) {
+    for (i=0; i<img->height; i++) {
+        for (j=0; j<img->width; j++) {
             RGBPixel px;
             for (k=0; k<3; k++) {
                 // check that we haven't read more than what is available
@@ -203,7 +207,7 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
                     return -1;
                 }
                 num = data[ptr++];
-                if (num < 0 || num > 255) {
+                if (num < 0 || num > img->max_color_val) {
                     perror("Error: read_p6_data: found a pixel value out of range");
                     return -1;
                 }
@@ -218,19 +222,18 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
                     px.b = num;
                 }
             }
-            pixmap[i * width + j] = px;
+            img->pixmap[i * img->width + j] = px;
         }
     }
     // check if there's still data left
     if (ptr < b) {
-        printf("ptr: %d\n", ptr);
         perror("Error: read_p6_data: Extra image data was found in file");
         return -1;
     }
     return 0;
 }
 
-int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
+int read_p3_data(FILE *fh, image *img) {
     
     // read all remaining data from image into buffer
     int b = bytes_left(fh); 
@@ -266,8 +269,8 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     char num[4];        // holds string repr. of a 0-255 value
     int counter = 0;
     // loop through buffer and populate RGBPixel array
-    for (i=0; i<height; i++) {
-        for (j=0; j<width; j++) {
+    for (i=0; i<img->height; i++) {
+        for (j=0; j<img->width; j++) {
             RGBPixel px;
             for (k=0; k<3; k++) {
                 ptr = 0;
@@ -290,7 +293,7 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
                     }
                 }
 
-                if (atoi(num) < 0 || atoi(num) > 255) {
+                if (atoi(num) < 0 || atoi(num) > img->max_color_val) {
                     perror("Error: read_p3_data: found a pixel value out of range");
                     return -1;
                 }
@@ -304,7 +307,7 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
                 else {
                     px.b = atoi(num);
                 }
-                pixmap[i * width + j] = px;
+                img->pixmap[i * img->width + j] = px;
             }
         }
     }
@@ -435,13 +438,14 @@ int main(int argc, char *argv[]){
     image img;
     img.width = hdr->width;
     img.height = hdr->height;
+    img.max_color_val = hdr->max_color_val;
     img.pixmap = malloc(sizeof(RGBPixel) * img.width * img.height);
     
     // read image data
     if (origin_file_type == 3)
-        ret_val = read_p3_data(in_ptr, img.pixmap, img.width, img.height);
+        ret_val = read_p3_data(in_ptr, &img);
     else
-        ret_val = read_p6_data(in_ptr, img.pixmap, img.width, img.height);
+        ret_val = read_p6_data(in_ptr, &img);
     
     if (ret_val < 0) {
         perror("Error: main: Problem reading image data");
