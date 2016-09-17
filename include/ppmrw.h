@@ -33,8 +33,4 @@ typedef struct image_t {
     int width, height;
 } image;
 
-/* functions */
-int read_header(FILE *fh, header *hdr);
-char **read_comments(FILE *fh);
-
 #endif
