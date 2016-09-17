@@ -14,6 +14,16 @@
 #include "include/ppmrw.h"
 
 
+/*******************************************************//**
+ * Utility functions
+ * ********************************************************/
+
+/**
+ * Checks for and moves over consecutive comments in a file recursively
+ * @param fh file stream being checked
+ * @param c The last character that was read from the file.
+ * @return 0 on success, -1 on error
+ */
 int check_for_comments(FILE *fh, char c) {
     /* jumps over comments and onto the next line, then recursively checks again */
     // skip any leading white space
@@ -46,6 +56,33 @@ int check_for_newline(char c) {
     return 0;
 }
 
+int bytes_left(FILE *fh) {
+    // returns the number of bytes left in a file
+    int bytes;
+    int pos = ftell(fh);    // get current pointer
+    fseek(fh, 0, SEEK_END);
+    int end = ftell(fh);
+    bytes = end - pos;
+    fseek(fh, pos, SEEK_SET); // put the pointer back
+    if (bytes <= 0) {
+        fprintf(stderr, "Error: bytes_left: bytes remaining <= 0\n");
+        return -1;
+    }
+    return bytes;
+}
+
+
+/*******************************************************//**
+ * PPM read/write functions
+ * ********************************************************/
+
+/**
+ * Reads the header information from a ppm file from a file stream into
+ * a header struct
+ * @param fh file handler
+ * @param hdr header struct to store the information from the fh stream
+ * @return 0 on success, -1 on error
+ */
 int read_header(FILE *fh, header *hdr) {
     int ret_val;    // holds temp return value for reading each section of header
     char c;         // temporary char read in from file
@@ -153,21 +190,12 @@ int read_header(FILE *fh, header *hdr) {
     return 0;
 }
 
-int bytes_left(FILE *fh) {
-    // returns the number of bytes left in a file
-    int bytes;
-    int pos = ftell(fh);    // get current pointer
-    fseek(fh, 0, SEEK_END);
-    int end = ftell(fh);
-    bytes = end - pos;
-    fseek(fh, pos, SEEK_SET); // put the pointer back
-    if (bytes <= 0) {
-        fprintf(stderr, "Error: bytes_left: bytes remaining <= 0\n");
-        return -1;
-    }
-    return bytes;
-}
-
+/**
+ * Writes ppm P6 image data (pixels) to a file stream
+ * @param fh file handler
+ * @param img image struct holding image data to be written
+ * @return 0 on success, -1 on error
+ */
 int write_p6_data(FILE *fh, image *img) {
     int i,j;
     for (i=0; i<(img->height); i++) {
@@ -180,6 +208,13 @@ int write_p6_data(FILE *fh, image *img) {
     return 0;
 }
 
+/**
+ * Reads the pixel data from a P6 ppm file from a file stream into
+ * an img struct
+ * @param fh input file pointer
+ * @param img initially empty. Place to store image data read from fh
+ * @return 0 on success, -1 on error
+ */
 int read_p6_data(FILE *fh, image *img) {
     // reads p6 data and stores in buffer
     // read all remaining data from image into buffer
@@ -247,6 +282,13 @@ int read_p6_data(FILE *fh, image *img) {
     return 0;
 }
 
+/**
+ * Reads the pixel data from a P3 ppm file from a file stream into
+ * an img struct
+ * @param fh input file pointer
+ * @param img initially empty. Place to store image data read from fh
+ * @return 0 on success, -1 on error
+ */
 int read_p3_data(FILE *fh, image *img) {
     
     // read all remaining data from image into buffer
@@ -281,7 +323,7 @@ int read_p3_data(FILE *fh, image *img) {
     int i, j, k;        // loop variables
     int ptr;            // current index of the num array
     char num[4];        // holds string repr. of a 0-255 value
-    int counter = 0;
+
     // loop through buffer and populate RGBPixel array
     for (i=0; i<img->height; i++) {
         for (j=0; j<img->width; j++) {
@@ -337,6 +379,12 @@ int read_p3_data(FILE *fh, image *img) {
     return 0;
 }
 
+/**
+ * Writes ppm P3 image data (pixels) to a file stream
+ * @param fh file handler
+ * @param img image struct holding image data to be written
+ * @return 0 on success, -1 on error
+ */
 int write_p3_data(FILE *fh, image *img) {
     int i,j;
     for (i=0; i<(img->height); i++) {
@@ -349,6 +397,12 @@ int write_p3_data(FILE *fh, image *img) {
     return 0;
 }
 
+/**
+ * Writes ppm header struct information to a file stream
+ * @param fh file handler
+ * @param hdr header struct
+ * @return 0 on success, -1 on error
+ */
 int write_header(FILE *fh, header *hdr) {
     int ret_val = 0;
     ret_val = fputs("P", fh);
@@ -372,6 +426,8 @@ int write_header(FILE *fh, header *hdr) {
     return ret_val;
 }
 
+
+/* TESTING helper functions */
 void print_pixels(RGBPixel *pixmap, int width, int height) {
     int i,j;
     int counter = 0;
@@ -386,6 +442,10 @@ void print_pixels(RGBPixel *pixmap, int width, int height) {
     printf("print_pixels count: %d\n", counter);
 }
 
+
+/*******************************************************//**
+ * main
+ * ********************************************************/
 int main(int argc, char *argv[]){
     if (argc != 4) {
         fprintf(stderr, "Error: main: ppmrw requires 3 arguments\n");
@@ -397,9 +457,10 @@ int main(int argc, char *argv[]){
     int ret_val;
     char c;
 
-    in_ptr = fopen(argv[2], "rb");
-    out_ptr = fopen(argv[3], "wb");
+    in_ptr = fopen(argv[2], "rb");  // input file pointer
+    out_ptr = fopen(argv[3], "wb"); // output file pointer
     
+    // error check the file pointers
     if (in_ptr == NULL) {
         fprintf(stderr, "Error: main: Input file can't be opened\n");
         return 1;
@@ -412,6 +473,11 @@ int main(int argc, char *argv[]){
     // allocate space for header information
     header *hdr = (header *)malloc(sizeof(header));
 
+
+    /******************************//**
+     * read data from input file
+     *********************************/
+
     // read header of input file
     ret_val = read_header(in_ptr, hdr);
     
@@ -419,12 +485,6 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "Error: main: Problem reading header\n");
         return 1;
     }
-    // read one more byte before reading data (should be a space-type character)
-//    c = fgetc(in_ptr);
-//    if (!isspace(c)) {
-//        fprintf(stderr, "Error: main: No delimiter after header in input file\n");
-  //      return 1;
-   // }
 
     // store the file type of the origin file so we know what we're converting from
     int origin_file_type = hdr->file_type;
@@ -440,14 +500,6 @@ int main(int argc, char *argv[]){
         return -1;
     }
 
-    // write header info to output file
-    ret_val = write_header(out_ptr, hdr);
-    if (ret_val < 0) {
-        fprintf(stderr, "Error: main: Problem writing header to output file\n");
-        return -1;
-    }
-    printf("successfully wrote header.\n");
-
     // create img struct to store relevant image info
     image img;
     img.width = hdr->width;
@@ -455,7 +507,7 @@ int main(int argc, char *argv[]){
     img.max_color_val = hdr->max_color_val;
     img.pixmap = malloc(sizeof(RGBPixel) * img.width * img.height);
     
-    // read image data
+    // read image data (pixels)
     if (origin_file_type == 3)
         ret_val = read_p3_data(in_ptr, &img);
     else
@@ -465,6 +517,18 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "Error: main: Problem reading image data\n");
         return -1;
     }
+
+    /*****************************//**
+     * write the data to output file
+     *********************************/
+
+    // write header info to output file
+    ret_val = write_header(out_ptr, hdr);
+    if (ret_val < 0) {
+        fprintf(stderr, "Error: main: Problem writing header to output file\n");
+        return -1;
+    }
+    printf("successfully wrote header.\n");
 
     // write image data to destination file
     if (atoi(argv[1]) == 3)
