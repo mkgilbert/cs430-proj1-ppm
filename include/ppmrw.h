@@ -30,7 +30,7 @@ typedef struct RGBPixel_t {
 // image info
 typedef struct image_t {
     RGBPixel *pixmap;
-    int width, height;
+    int width, height, max_color_val;
 } image;
 
 #endif
