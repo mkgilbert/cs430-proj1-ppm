@@ -232,7 +232,7 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 }
 
 int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
-
+    
     // read all remaining data from image into buffer
     int b = bytes_left(fh); 
     // check for error reading bytes_left()
@@ -259,29 +259,32 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
     }
     // null terminate the buffer
     data[b] = '\0';
-
     // make sure we're not starting at a space or newline
     while (isspace(*data_p) && (*data_p != '\0')) { data_p++; };
     
     int i, j, k;        // loop variables
     int ptr;            // current index of the num array
     char num[4];        // holds string repr. of a 0-255 value
-
+    int counter = 0;
     // loop through buffer and populate RGBPixel array
     for (i=0; i<height; i++) {
         for (j=0; j<width; j++) {
             RGBPixel px;
+            printf("counter: %d\n", counter++);
             for (k=0; k<3; k++) {
                 ptr = 0;
                 while (TRUE) {
                     // check that we haven't read more than what is available
+                    printf("'%c'\n", *data_p);
                     if (*data_p == '\0') {
                         perror("Error: read_p3_data: Image data is missing or header dimensions are wrong");
                         return -1;
                     }
                     if (isspace(*data_p)) {
                         *(num + ptr) = '\0';
-                        data_p++;
+                        while (isspace(*data_p) && (*data_p != '\0')) { 
+                            data_p++; 
+                        }
                         break;
                     }
                     else {
@@ -297,19 +300,32 @@ int read_p3_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
                 if (k == 0) {
                     px.r = atoi(num);
+                    printf("r: %d ", px.r);
                 }
                 else if (k == 1) {
                     px.g = atoi(num);
+                    printf("g: %d ", px.g);
                 }
                 else {
                     px.b = atoi(num);
+                    printf("b: %d\n", px.b);
                 }
                 pixmap[i * width + j] = px;
             }
         }
     }
+
+    // skip any white space that may remain at the end of the data
+    while (isspace(*data_p) && (*data_p != '\0')) { data_p++; };
+    
+    printf("width: %d\n", width);
+    printf("height: %d\n", height);
     // check if there's still data left
     if (*data_p != '\0') {
+        for (i=0; i<500; i++){
+            printf("%c\n", *data_p++);
+        }
+        printf("last spot: %c\n", *data_p);
         perror("Error: read_p3_data: Extra image data was found in file");
         return -1;
     }
@@ -445,7 +461,7 @@ int main(int argc, char *argv[]){
     }
 
     // testing
-    //print_pixels(img.pixmap, img.width, img.height);
+    print_pixels(img.pixmap, img.width, img.height);
     
     // write image data to destination file
     if (atoi(argv[1]) == 3)
