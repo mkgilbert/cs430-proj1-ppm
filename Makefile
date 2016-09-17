@@ -6,3 +6,6 @@ all:
 
 clean:
 	rm -rf $(PROG)
+
+clean-all: clean
+	rm -rf *.ppm
