@@ -174,7 +174,6 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
 
     // create temp buffer for image data + 1 for null char
     unsigned char data[b+1];
-    unsigned char *data_p = data;
     int read;
 
     // read the rest of the file and check that what remains is the right size
@@ -188,9 +187,8 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
         perror("Error: read_p6_data: image data doesn't match header dimensions");
         return -1;
     }
-    // null terminate the buffer
-    data[b] = '\0';
 
+    int ptr = 0;        // data pointer/incrementer
     int i, j, k;        // loop variables
     unsigned char num;  // build a number from chars read in from file
 
@@ -200,11 +198,11 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
             RGBPixel px;
             for (k=0; k<3; k++) {
                 // check that we haven't read more than what is available
-                if (*data_p == '\0') {
+                if (ptr >= b) {
                     perror("Error: read_p6_data: Image data is missing or header dimensions are wrong");
                     return -1;
                 }
-                num = *data_p++;
+                num = data[ptr++];
                 if (num < 0 || num > 255) {
                     perror("Error: read_p6_data: found a pixel value out of range");
                     return -1;
@@ -224,7 +222,8 @@ int read_p6_data(FILE *fh, RGBPixel *pixmap, int width, int height) {
         }
     }
     // check if there's still data left
-    if (*data_p != '\0') {
+    if (ptr < b) {
+        printf("ptr: %d\n", ptr);
         perror("Error: read_p6_data: Extra image data was found in file");
         return -1;
     }
